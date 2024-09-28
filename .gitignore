@@ -1,0 +1,13 @@
+/target/
+/bin/
+*.class
+*.log
+.classpath
+.idea
+.wercker
+project/target
+project/project
+lib_managed*/
+.DS_Store
+.bsp/
+dynamodb-local-metadata.json
