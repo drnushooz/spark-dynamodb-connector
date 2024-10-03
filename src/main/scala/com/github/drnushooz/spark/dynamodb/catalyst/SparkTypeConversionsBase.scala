@@ -30,43 +30,41 @@ import scala.jdk.CollectionConverters._
 
 private[dynamodb] class SparkTypeConversionsBase {
   def apply(attrName: String, sparkType: DataType): Map[String, AttributeValue] => Any = { item =>
-    {
-      sparkType match {
-        case BooleanType | ByteType | BinaryType | ShortType | IntegerType | LongType | FloatType | DoubleType |
-            DecimalType() | StringType =>
-          item.get(attrName).map(convertAttribute(sparkType)).orNull
-        case ArrayType(innerType, _) =>
-          item
-            .get(attrName)
-            .map(convertAttribute(innerType))
-            .map(extractArray(convertValue(innerType)))
-            .orNull
-        case MapType(keyType, valueType, _) =>
-          if (keyType != StringType) {
-            throw new IllegalArgumentException(
-              s"Invalid Map key type '${keyType.typeName}'. DynamoDB only supports " +
-                s"String as Map key type.")
-          }
-          item
-            .get(attrName)
-            .map(convertAttribute(valueType))
-            .map(extractMap(convertValue(valueType)))
-            .orNull
-        case StructType(fields) =>
-          val nestedTypes = fields.collect { case StructField(name, dataType, _, _) =>
-            name -> dataType
-          }.toMap
-          val nestedConversions = createNestedConversions(nestedTypes)
-          val dAttributes = item.get(attrName).map(_.m.asScala)
-          val attributes = dAttributes.map(_.map { case (name, attr) =>
-            name -> convertAttribute(nestedTypes(name))(attr)
-          }.asJava)
-          attributes.map(extractStruct(nestedConversions)).orNull
-        case _ =>
+    sparkType match {
+      case BooleanType | ByteType | BinaryType | ShortType | IntegerType | LongType | FloatType | DoubleType |
+          DecimalType() | StringType =>
+        item.get(attrName).map(convertAttribute(sparkType)).orNull
+      case ArrayType(innerType, _) =>
+        item
+          .get(attrName)
+          .map(convertAttribute(innerType))
+          .map(extractArray(convertValue(innerType)))
+          .orNull
+      case MapType(keyType, valueType, _) =>
+        if (keyType != StringType) {
           throw new IllegalArgumentException(
-            s"Spark DataType '${sparkType.typeName}' could not be mapped to a " +
-              s"corresponding DynamoDB data type.")
-      }
+            s"Invalid Map key type '${keyType.typeName}'. DynamoDB only supports " +
+              s"String as Map key type.")
+        }
+        item
+          .get(attrName)
+          .map(convertAttribute(valueType))
+          .map(extractMap(convertValue(valueType)))
+          .orNull
+      case StructType(fields) =>
+        val nestedTypes = fields.collect { case StructField(name, dataType, _, _) =>
+          name -> dataType
+        }.toMap
+        val nestedConversions = createNestedConversions(nestedTypes)
+        val dAttributes = item.get(attrName).map(_.m.asScala)
+        val attributes = dAttributes.map(_.map { case (name, attr) =>
+          name -> convertAttribute(nestedTypes(name))(attr)
+        }.asJava)
+        attributes.map(extractStruct(nestedConversions)).orNull
+      case _ =>
+        throw new IllegalArgumentException(
+          s"Spark DataType '${sparkType.typeName}' could not be mapped to a " +
+            s"corresponding DynamoDB data type.")
     }
   }
 

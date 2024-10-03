@@ -21,7 +21,7 @@ package com.github.drnushooz.spark.dynamodb.connector
 import com.github.drnushooz.spark.dynamodb.catalyst.DynamoTypeConversions
 import io.github.resilience4j.ratelimiter.RateLimiter
 import org.apache.spark.sql.catalyst.InternalRow
-import org.apache.spark.sql.sources.Filter
+import org.apache.spark.sql.connector.expressions.filter.Predicate
 import software.amazon.awssdk.auth.credentials._
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.dynamodb.model._
@@ -41,7 +41,7 @@ private[dynamodb] case class DynamoTableConnector(
     extends DynamoWritable
     with Serializable {
   private val consistentRead = parameters.getOrElse("stronglyConsistentReads", "false").toBoolean
-  private val filterPushdown = parameters.getOrElse("filterPushdown", "true").toBoolean
+  private val predicatePushdown = parameters.getOrElse("predicatePushdown", "true").toBoolean
   private val region = parameters.get("region")
   private val roleArn = parameters.get("roleArn")
   private val providerClassName = parameters.get("providerClassName")
@@ -116,7 +116,7 @@ private[dynamodb] case class DynamoTableConnector(
 
   def nonEmpty: Boolean = !isEmpty
 
-  def filterPushdownEnabled: Boolean = filterPushdown
+  def predicatePushdownEnabled: Boolean = predicatePushdown
 
   def getDynamoDB(
       region: Option[String] = None,
@@ -225,25 +225,31 @@ private[dynamodb] case class DynamoTableConnector(
       .getOrElse(DefaultCredentialsProvider.create)
   }
 
-  def scan(columns: Seq[String], filters: Seq[Filter]): ExecuteStatementIterable = {
+  def scan(columns: Seq[String], predicates: Seq[Predicate], limit: Option[Int] = None): ExecuteStatementIterable = {
     val projectionBuf = new StringBuilder
-    if (columns.nonEmpty)
+    if (columns.nonEmpty) {
       projectionBuf ++= s"SELECT ${columns.mkString(",")} "
-    else
+    } else {
       projectionBuf ++= "SELECT * "
+    }
 
     projectionBuf ++= indexName
       .map(in => s"""FROM "$tableName"."$in"""")
       .getOrElse(s"""FROM "$tableName"""")
 
-    if (filters.nonEmpty && filterPushdown)
-      projectionBuf ++= s" WHERE ${FilterPushdown(filters)}"
+    if (predicates.nonEmpty && predicatePushdown) {
+      projectionBuf ++= s" WHERE ${PredicatePushdown(predicates)}"
+    }
     projectionBuf ++= ";"
 
-    val executeStatementRequest = ExecuteStatementRequest.builder
+    val executeStatementRequestBuilder = ExecuteStatementRequest.builder
       .statement(projectionBuf.toString)
       .returnConsumedCapacity(ReturnConsumedCapacity.TOTAL)
       .consistentRead(consistentRead)
+
+    val executeStatementRequest = limit
+      .map(executeStatementRequestBuilder.limit(_))
+      .getOrElse(executeStatementRequestBuilder)
       .build
 
     val ddbClient = getDynamoDB(region, roleArn, providerClassName)

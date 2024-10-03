@@ -11,7 +11,7 @@ lazy val scala213 = "2.13.15"
 
 scalaVersion := scala213
 
-val awsSdkVersion = "2.28.10"
+val awsSdkVersion = "2.28.15"
 val dynamoDbLocalVersion = "2.5.2"
 val log4j2Version = "2.24.1"
 val rateLimiterVersion = "2.2.0"

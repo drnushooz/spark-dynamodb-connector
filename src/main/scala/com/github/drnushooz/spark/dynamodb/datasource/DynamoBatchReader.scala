@@ -19,12 +19,16 @@
 package com.github.drnushooz.spark.dynamodb.datasource
 
 import com.github.drnushooz.spark.dynamodb.connector.DynamoTableConnector
+import org.apache.spark.sql.connector.expressions.filter.Predicate
 import org.apache.spark.sql.connector.read._
 import org.apache.spark.sql.connector.read.partitioning.Partitioning
-import org.apache.spark.sql.sources.Filter
 import org.apache.spark.sql.types.StructType
 
-case class DynamoBatchReader(connector: DynamoTableConnector, filters: Array[Filter], schema: StructType)
+case class DynamoBatchReader(
+    connector: DynamoTableConnector,
+    predicates: Array[Predicate],
+    schema: StructType,
+    limit: Option[Int])
     extends Scan
     with Batch
     with SupportsReportPartitioning {
@@ -38,11 +42,11 @@ case class DynamoBatchReader(connector: DynamoTableConnector, filters: Array[Fil
 
   override def planInputPartitions(): Array[InputPartition] = {
     val requiredColumns = schema.map(_.name)
-    Array.tabulate(connector.totalSegments)(new ScanPartition(_, requiredColumns, filters))
+    Array.tabulate(connector.totalSegments)(new ScanPartition(_, requiredColumns, predicates))
   }
 
   override def createReaderFactory(): PartitionReaderFactory = {
-    DynamoReaderFactory(connector, schema)
+    DynamoReaderFactory(connector, schema, limit)
   }
 
   override val outputPartitioning: Partitioning = new OutputPartitioning(connector.totalSegments)
