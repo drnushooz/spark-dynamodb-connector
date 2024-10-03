@@ -18,8 +18,8 @@
  */
 package com.github.drnushooz.spark.dynamodb.datasource
 
+import org.apache.spark.sql.connector.expressions.filter.Predicate
 import org.apache.spark.sql.connector.read.InputPartition
-import org.apache.spark.sql.sources.Filter
 
-class ScanPartition(val partitionIndex: Int, val requiredColumns: Seq[String], val filters: Array[Filter])
+class ScanPartition(val partitionIndex: Int, val requiredColumns: Seq[String], val predicates: Array[Predicate])
     extends InputPartition

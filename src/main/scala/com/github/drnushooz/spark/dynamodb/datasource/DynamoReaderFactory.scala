@@ -29,11 +29,13 @@ import software.amazon.awssdk.services.dynamodb.model.AttributeValue
 import java.time.Duration
 import scala.collection.compat.immutable.ArraySeq
 import scala.jdk.CollectionConverters._
+import scala.collection.compat._
 
-case class DynamoReaderFactory(connector: DynamoTableConnector, schema: StructType) extends PartitionReaderFactory {
+case class DynamoReaderFactory(connector: DynamoTableConnector, schema: StructType, limit: Option[Int])
+    extends PartitionReaderFactory {
   override def createReader(partition: InputPartition): PartitionReader[InternalRow] = {
     if (connector.isEmpty) new EmptyReader
-    else new ScanPartitionReader(partition.asInstanceOf[ScanPartition])
+    else new ScanPartitionReader(partition.asInstanceOf[ScanPartition], limit)
   }
 
   private class EmptyReader extends PartitionReader[InternalRow] {
@@ -44,11 +46,12 @@ case class DynamoReaderFactory(connector: DynamoTableConnector, schema: StructTy
     override def close(): Unit = {}
   }
 
-  private class ScanPartitionReader(scanPartition: ScanPartition) extends PartitionReader[InternalRow] {
+  private class ScanPartitionReader(scanPartition: ScanPartition, limit: Option[Int])
+      extends PartitionReader[InternalRow] {
     import scanPartition._
 
     private val responseIterator = connector
-      .scan(requiredColumns, ArraySeq.unsafeWrapArray(filters))
+      .scan(requiredColumns, ArraySeq.unsafeWrapArray(predicates), limit)
       .iterator()
 
     private val rateLimiterConfig = RateLimiterConfig.custom

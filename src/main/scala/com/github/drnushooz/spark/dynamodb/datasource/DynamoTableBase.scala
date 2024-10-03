@@ -105,8 +105,11 @@ class DynamoTableBase(options: CaseInsensitiveStringMap, userSchema: Option[Stru
       StructType(mapFields.toSeq)
     case Type.L =>
       val vList = value.l
-      if (vList.isEmpty) ArrayType(StringType)
-      else ArrayType(inferType(vList.get(0)))
+      if (vList.isEmpty) {
+        ArrayType(StringType)
+      } else {
+        ArrayType(inferType(vList.get(0)))
+      }
     case Type.SS => ArrayType(StringType)
     case Type.NS => ArrayType(DoubleType)
     case Type.BS => ArrayType(BinaryType)

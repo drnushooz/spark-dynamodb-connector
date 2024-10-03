@@ -18,20 +18,24 @@
  */
 package com.github.drnushooz.spark.dynamodb.datasource
 
-import com.github.drnushooz.spark.dynamodb.connector.{DynamoTableConnector, FilterPushdown}
+import com.github.drnushooz.spark.dynamodb.connector.{DynamoTableConnector, PredicatePushdown}
+import org.apache.spark.sql.connector.expressions.SortOrder
+import org.apache.spark.sql.connector.expressions.aggregate.Aggregation
+import org.apache.spark.sql.connector.expressions.filter.Predicate
 import org.apache.spark.sql.connector.read._
-import org.apache.spark.sql.sources.Filter
 import org.apache.spark.sql.types._
 
 class DynamoScanBuilder(connector: DynamoTableConnector, schema: StructType)
     extends ScanBuilder
+    with SupportsPushDownV2Filters
     with SupportsPushDownRequiredColumns
-    with SupportsPushDownFilters {
-  private var acceptedFilters: Array[Filter] = Array.empty
+    with SupportsPushDownLimit {
+  private var acceptedPredicates: Array[Predicate] = Array.empty
   private var currentSchema: StructType = schema
+  private var scanLimit: Option[Int] = None
 
   override def build(): Scan = {
-    DynamoBatchReader(connector, pushedFilters(), currentSchema)
+    DynamoBatchReader(connector, pushedPredicates(), currentSchema, scanLimit)
   }
 
   override def pruneColumns(requiredSchema: StructType): Unit = {
@@ -43,15 +47,24 @@ class DynamoScanBuilder(connector: DynamoTableConnector, schema: StructType)
     currentSchema = StructType(newFields)
   }
 
-  override def pushFilters(filters: Array[Filter]): Array[Filter] = {
-    if (connector.filterPushdownEnabled) {
-      val (acceptedFilters, postScanFilters) = FilterPushdown.acceptFilters(filters)
-      this.acceptedFilters = acceptedFilters
-      postScanFilters // Return filters that need to be evaluated after scanning.
-    } else filters
+  override def pushLimit(limit: Int): Boolean = {
+    scanLimit = Some(limit)
+    scanLimit.isDefined
   }
 
-  override def pushedFilters(): Array[Filter] = {
-    acceptedFilters
+  override def isPartiallyPushed: Boolean = {
+    scanLimit.isEmpty
+  }
+
+  override def pushPredicates(predicates: Array[Predicate]): Array[Predicate] = {
+    if (connector.predicatePushdownEnabled) {
+      val (acceptedPredicates, postScanPredicates) = PredicatePushdown.acceptPredicates(predicates)
+      this.acceptedPredicates = acceptedPredicates
+      postScanPredicates // Return filters that need to be evaluated after scanning.
+    } else predicates
+  }
+
+  override def pushedPredicates(): Array[Predicate] = {
+    acceptedPredicates
   }
 }

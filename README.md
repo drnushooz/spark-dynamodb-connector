@@ -84,7 +84,6 @@ dynamoDf.write.option("tableName", "employees2").format("dynamodb").save()
 
 ### Spark reader level parameters
 
-
 | Name                      | Purpose                                                                              | Default value                     |
 |---------------------------|--------------------------------------------------------------------------------------|-----------------------------------|
 | `readPartitions`          | Number of partitions to split the initial RDD when loading the data into Spark.      | `maxPartitionBytes` size chunks   |
@@ -93,7 +92,7 @@ dynamoDf.write.option("tableName", "employees2").format("dynamodb").save()
 | `targetCapacity`          | Fraction of provisioned read capacity on the table (or index) to consume for reading | `1` (100%)                        |
 | `stronglyConsistentReads` | Whether to use strongly consistent reads                                             | `false`                           |
 | `bytesPerRCU`             | Number of bytes which can be read per second per read capacity unit                  | `4096` (4 KiB)                    |
-| `filterPushdown`          | Enable filter pushdown for scan requests                                             | `true`                            |
+| `predicatePushdown`       | Enable predicate pushdown for scan requests                                          | `true`                            |
 | `throughput`              | Desired percentage throughput to use for on-demand tables                            | `100`                             |
 
 ### Spark writer level parameters
@@ -107,9 +106,9 @@ dynamoDf.write.option("tableName", "employees2").format("dynamodb").save()
 
 ### System properties
 
-| Name                    | Purpose                                                                              | Default value                    |
-|-------------------------|--------------------------------------------------------------------------------------|----------------------------------|
-| `aws.profile`           | IAM profile to use for default credentials provider                                  | `us-east-1`                      |
-| `aws.dynamodb.region`   | Region for all AWS API calls                                                         | `134217728` (128 MiB)            |
-| `aws.dynamodb.endpoint` | Endpoint to use for DynamoDB APIs                                                    | `sparkContext.defaultParallelism` |
-| `aws.sts.endpoint`      | fraction of provisioned read capacity on the table (or index) to consume for reading | `1` (100%)                         |
+| Name                    | Purpose                                             | Default value                      |
+|-------------------------|-----------------------------------------------------|------------------------------------|
+| `aws.profile`           | IAM profile to use for default credentials provider | `default`                          |
+| `aws.dynamodb.region`   | Region for all AWS API calls                        | `us-east-1`                        |
+| `aws.dynamodb.endpoint` | Endpoint to use for DynamoDB APIs                   | `dynamodb.us-east-1.amazonaws.com` |
+| `aws.sts.endpoint`      | Endpoint to use for STS APIs                        | `sts.us-east-1.amazonaws.com`      |

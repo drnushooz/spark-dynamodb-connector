@@ -25,6 +25,7 @@ import org.apache.spark.unsafe.types.UTF8String
 import software.amazon.awssdk.core.SdkBytes
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue
 
+import scala.collection.compat._
 import scala.collection.compat.immutable._
 import scala.jdk.CollectionConverters._
 
